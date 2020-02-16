@@ -2,7 +2,7 @@
  * @Author: czy0729
  * @Date: 2020-01-14 18:51:27
  * @Last Modified by: czy0729
- * @Last Modified time: 2020-02-15 03:06:21
+ * @Last Modified time: 2020-02-16 09:27:25
  */
 const fs = require('fs')
 const path = require('path')
@@ -18,7 +18,7 @@ function findJsonFile(path) {
     )
   )
 }
-findJsonFile('../Bangumi-Subject/ids/anime-bangumi-data.json')
+findJsonFile('../Bangumi-Subject/ids/anime-rank.json')
 // console.log(filePaths)
 
 const ids = []
