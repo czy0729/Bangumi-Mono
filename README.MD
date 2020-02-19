@@ -14,15 +14,19 @@
 
 ```
 https://cdn.jsdelivr.net/gh/czy0729/Bangumi-Mono@master/${type}/${parseInt(parseInt(monoId) / 100)}/${monoId}.json
+```
 
 分为 `角色 => character => */data/*` 和 `人物 => person => */person/*`
 
-// 例如 character 为 `character/21627` 姬柊雪菜 访问地址为
+例如 character 为 `character/21627` 姬柊雪菜 访问地址为
 
+```
 https://cdn.jsdelivr.net/gh/czy0729/Bangumi-Mono@master/data/216/21627.json
+```
 
-// 例如 person 为 `person/8138` 种田梨沙 访问地址为
+例如 person 为 `person/8138` 种田梨沙 访问地址为
 
+```
 https://cdn.jsdelivr.net/gh/czy0729/Bangumi-Mono@master/person/81/8138.json
 ```
 
@@ -169,7 +173,6 @@ character
     }
   ]
 }
-
 ```
 
 person
@@ -253,6 +256,4 @@ person
     }
   ]
 }
-
-
 ```
