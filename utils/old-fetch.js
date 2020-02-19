@@ -2,7 +2,7 @@
  * @Author: czy0729
  * @Date: 2020-02-14 20:34:19
  * @Last Modified by: czy0729
- * @Last Modified time: 2020-02-14 21:13:27
+ * @Last Modified time: 2020-02-19 12:07:49
  */
 const axios = require('axios')
 const HTMLParser = require('./html-parser')
@@ -18,10 +18,10 @@ const INIT_MONO = {
   jobs: [] // 出演
 }
 
-async function fetchMono(monoId = 21628) {
+async function fetchMono(monoId = 21628, type = 'character') {
   // -------------------- 请求HTML --------------------
   const { data: raw } = await axios({
-    url: `https://bgm.tv/character/${monoId}`
+    url: `https://bgm.tv/${type}/${monoId}`
   })
   const HTML = HTMLTrim(raw)
 
