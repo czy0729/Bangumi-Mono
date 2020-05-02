@@ -2,7 +2,7 @@
  * @Author: czy0729
  * @Date: 2020-03-12 11:44:26
  * @Last Modified by: czy0729
- * @Last Modified time: 2020-03-12 11:56:13
+ * @Last Modified time: 2020-05-02 20:22:28
  */
 const fs = require('fs')
 const path = require('path')
@@ -28,13 +28,13 @@ function findJsonFile(path) {
 findJsonFile('./data')
 
 const ids = []
-filePaths.forEach(item => {
+filePaths.forEach((item) => {
   const { jobs } = JSON.parse(fs.readFileSync(item))
   if (!jobs) {
     return
   }
 
-  jobs.forEach(i => {
+  jobs.forEach((i) => {
     if (i.castHref.includes('/person/')) {
       ids.push(i.castHref.replace('/person/', ''))
     }
@@ -61,7 +61,10 @@ function fetchMono(id, index) {
     }
 
     console.log(`- writing ${id}.json [${index} / ${uniqueIds.length}]`)
-    fs.writeFileSync(filePath, utils.safeStringify(data))
+    fs.writeFileSync(
+      filePath,
+      utils.safeStringify(data, data.nameCn || data.name)
+    )
 
     return resolve(true)
   })

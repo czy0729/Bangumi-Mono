@@ -2,7 +2,7 @@
  * @Author: czy0729
  * @Date: 2020-01-14 18:51:27
  * @Last Modified by: czy0729
- * @Last Modified time: 2020-02-21 12:12:14
+ * @Last Modified time: 2020-05-02 22:08:25
  */
 const fs = require('fs')
 const path = require('path')
@@ -14,23 +14,23 @@ const type = 'person' // character | person
 const filePaths = []
 function findJsonFile(path) {
   const ids = JSON.parse(fs.readFileSync(path))
-  ids.forEach(item =>
+  ids.forEach((item) =>
     filePaths.push(
       `../Bangumi-Subject/data/${Math.floor(item / 100)}/${item}.json`
     )
   )
 }
-findJsonFile('../Bangumi-Subject/ids/real-rank.json')
+findJsonFile('../Bangumi-Subject/ids/anime-rank.json')
 // console.log(filePaths)
 
 const ids = []
-filePaths.forEach(item => {
+filePaths.forEach((item, index) => {
   if (type === 'character') {
     const { crt } = JSON.parse(fs.readFileSync(item))
     if (!crt) {
       return
     }
-    crt.forEach(i => {
+    crt.forEach((i) => {
       ids.push(i.id)
     })
   }
@@ -40,7 +40,7 @@ filePaths.forEach(item => {
     if (!staff) {
       return
     }
-    staff.forEach(i => {
+    staff.forEach((i) => {
       ids.push(i.id)
     })
   }
@@ -53,10 +53,10 @@ function fetchMono(id, index) {
     const filePath = `./${type === 'character' ? 'data' : type}/${Math.floor(
       id / 100
     )}/${id}.json`
-    if (fs.existsSync(filePath)) {
-      // console.log(`- skip ${id}.json [${index} / ${ids.length}]`)
-      return resolve(true)
-    }
+    // if (fs.existsSync(filePath)) {
+    //   // console.log(`- skip ${id}.json [${index} / ${ids.length}]`)
+    //   return resolve(true)
+    // }
 
     const data = await oldFetch.fetchMono(id, type)
 
@@ -65,7 +65,10 @@ function fetchMono(id, index) {
       fs.mkdirSync(dirPath)
     }
 
-    console.log(`- writing ${id}.json [${index} / ${uniqueIds.length}]`)
+    console.log(
+      `- writing ${id}.json [${index} / ${uniqueIds.length}]`,
+      data.nameCn || data.name
+    )
     fs.writeFileSync(filePath, utils.safeStringify(data))
 
     return resolve(true)
