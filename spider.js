@@ -2,7 +2,7 @@
  * @Author: czy0729
  * @Date: 2020-01-14 18:51:27
  * @Last Modified by: czy0729
- * @Last Modified time: 2020-05-02 22:08:25
+ * @Last Modified time: 2020-08-10 00:34:55
  */
 const fs = require('fs')
 const path = require('path')
@@ -10,18 +10,43 @@ const utils = require('./utils/utils')
 const oldFetch = require('./utils/old-fetch')
 
 const type = 'person' // character | person
+const file = 'anime-2021.json'
+const headers = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36',
+  Cookie:
+    '__cfduid=d10ce460503307836b7f7dfc6f19b10b11567003647; chii_cookietime=2592000; chii_theme_choose=1; prg_list_mode=full; prg_display_mode=normal; __utmz=1.1595138713.1545.69.utmcsr=tongji.baidu.com|utmccn=(referral)|utmcmd=referral|utmcct=/web/28208841/trend/latest; chii_theme=dark; __utmc=1; chii_searchDateLine=0; __utma=1.7292625.1567003648.1596860087.1596865033.1622; __utmt=1; chii_sid=zk53HA; chii_auth=MhC3h6SUV9MTRltnbl0U2HMA9swTI%2BN0tdxPtvPS9QKYgfQcIxdcgZzHrX44UF4JWEST2xQTCEdtMFkFBpV9yv8BZAAW824QDdZD; __utmb=1.4.10.1596865033',
+}
 
 const filePaths = []
-function findJsonFile(path) {
-  const ids = JSON.parse(fs.readFileSync(path))
-  ids.forEach((item) =>
-    filePaths.push(
-      `../Bangumi-Subject/data/${Math.floor(item / 100)}/${item}.json`
-    )
-  )
+function findJsonFile() {
+  const ids = [
+    ...JSON.parse(fs.readFileSync('../Bangumi-Subject/ids/anime-2021.json')),
+    ...JSON.parse(fs.readFileSync('../Bangumi-Subject/ids/anime-2020.json')),
+    ...JSON.parse(fs.readFileSync('../Bangumi-Subject/ids/anime-rank.json')),
+    ...JSON.parse(
+      fs.readFileSync('../Bangumi-Subject/ids/anime-bangumi-data.json')
+    ),
+    ...JSON.parse(fs.readFileSync('../Bangumi-Subject/ids/book-rank.json')),
+    ...JSON.parse(fs.readFileSync('../Bangumi-Subject/ids/game-rank.json')),
+    ...JSON.parse(fs.readFileSync('../Bangumi-Subject/ids/music-rank.json')),
+    ...JSON.parse(fs.readFileSync('../Bangumi-Subject/ids/real-rank.json')),
+  ]
+
+  let notExists = 0
+  ids.forEach((item) => {
+    const path = `../Bangumi-Subject/data/${Math.floor(
+      item / 100
+    )}/${item}.json`
+    if (fs.existsSync(path)) {
+      filePaths.push(path)
+    } else {
+      notExists += 1
+    }
+  })
+  console.log(`not exists files: ${notExists}`)
 }
-findJsonFile('../Bangumi-Subject/ids/anime-rank.json')
-// console.log(filePaths)
+findJsonFile()
 
 const ids = []
 filePaths.forEach((item, index) => {
@@ -46,7 +71,6 @@ filePaths.forEach((item, index) => {
   }
 })
 const uniqueIds = Array.from(new Set(ids))
-// const uniqueIds = [8138]
 
 function fetchMono(id, index) {
   return new Promise(async (resolve, reject) => {

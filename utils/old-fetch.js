@@ -2,10 +2,12 @@
  * @Author: czy0729
  * @Date: 2020-02-14 20:34:19
  * @Last Modified by: czy0729
- * @Last Modified time: 2020-02-19 12:07:49
+ * @Last Modified time: 2020-08-09 18:38:27
  */
 const axios = require('axios')
 const HTMLParser = require('./html-parser')
+
+axios.defaults.timeout = 3000
 
 const INIT_MONO = {
   name: '', // 日文名
@@ -15,178 +17,187 @@ const INIT_MONO = {
   detail: '', // 内容详情
   voices: [], // 最近演出角色
   works: [], // 最近参与
-  jobs: [] // 出演
+  jobs: [], // 出演
 }
 
-async function fetchMono(monoId = 21628, type = 'character') {
-  // -------------------- 请求HTML --------------------
-  const { data: raw } = await axios({
-    url: `https://bgm.tv/${type}/${monoId}`
-  })
-  const HTML = HTMLTrim(raw)
+async function fetchMono(monoId = 21628, type = 'character', headers) {
+  try {
+    // -------------------- 请求HTML --------------------
+    const { data: raw } = await axios({
+      url: `https://bgm.tv/${type}/${monoId}`,
+      headers,
+    })
+    const HTML = HTMLTrim(raw)
 
-  // -------------------- 分析内容 --------------------
-  let node
-  let matchHTML
+    // -------------------- 分析内容 --------------------
+    let node
+    let matchHTML
 
-  // 人物信息
-  const mono = {
-    ...INIT_MONO
-  }
+    // 人物信息
+    const mono = {
+      ...INIT_MONO,
+    }
 
-  if (HTML) {
-    // 标题
-    matchHTML = HTML.match(/<h1 class="nameSingle">(.+?)<\/h1>/)
-    if (matchHTML) {
-      const tree = HTMLToTree(matchHTML[1])
-      node = findTreeNode(tree.children, 'a|text&title')
-      if (node) {
-        mono.name = node[0].text[0]
-        mono.nameCn = node[0].attrs.title
+    if (HTML) {
+      // 标题
+      matchHTML = HTML.match(/<h1 class="nameSingle">(.+?)<\/h1>/)
+      if (matchHTML) {
+        const tree = HTMLToTree(matchHTML[1])
+        node = findTreeNode(tree.children, 'a|text&title')
+        if (node) {
+          mono.name = node[0].text[0]
+          mono.nameCn = node[0].attrs.title
+        }
+      }
+
+      // 封面
+      // @issue
+      matchHTML =
+        HTML.match(/<img src="(.+?)" class="cover"\/>/) ||
+        HTML.match(/<img src="(.+?)" class="cover" \/>/)
+      if (matchHTML) {
+        mono.cover = String(matchHTML[1]).split('?')[0]
+      }
+
+      // 各种详细
+      matchHTML = HTML.match(/<ul id="infobox">(.+?)<\/ul>/)
+      if (matchHTML) {
+        mono.info = String(matchHTML[1])
+          .replace(/\n/g, '')
+          .replace(/ class="(.+?)"/g, '')
+          .replace(/ title="(.+?)"/g, '')
+          .replace(/>( +)</g, '><')
+          .trim()
+      }
+
+      // 详情
+      matchHTML = HTML.match(/<div class="detail">(.+?)<\/div>/)
+      if (matchHTML) {
+        mono.detail = matchHTML[1]
+      }
+
+      // 最近演出角色
+      mono.voices = []
+      matchHTML = HTML.match(
+        /<h2 class="subtitle">最近演出角色<\/h2><ul class="browserList">(.+?)<\/ul><a href=/
+      )
+      if (matchHTML) {
+        const tree = HTMLToTree(matchHTML[1])
+        tree.children.forEach((item) => {
+          const { children } = item
+          node = findTreeNode(children, 'div > a|href&title')
+          const href = node ? node[0].attrs.href : ''
+          const name = node ? node[0].attrs.title : ''
+          node = findTreeNode(children, 'div > div > h3 > p')
+          const nameCn = node ? node[0].text[0] : ''
+          node = findTreeNode(children, 'div > a > img')
+          const cover = node ? String(node[0].attrs.src).split('?')[0] : ''
+          node = findTreeNode(children, 'ul > li > div > h3 > a|text&href')
+          const subjectHref = node ? node[0].attrs.href : ''
+          const subjectName = node ? node[0].text[0] : ''
+          node = findTreeNode(children, 'ul > li > div > small')
+          const subjectNameCn = node ? node[0].text[0] : ''
+          node = findTreeNode(children, 'ul > li > div > span')
+          const staff = node ? node[0].text[0] : ''
+          node = findTreeNode(children, 'ul > li > a > img')
+          const subjectCover = node
+            ? String(node[0].attrs.src).split('?')[0]
+            : ''
+          mono.voices.push({
+            href,
+            name: HTMLDecode(name),
+            nameCn: HTMLDecode(nameCn),
+            cover,
+            subjectHref,
+            subjectName: HTMLDecode(subjectName),
+            subjectNameCn: HTMLDecode(subjectNameCn),
+            staff,
+            subjectCover,
+          })
+        })
+      }
+
+      // 最近参与
+      mono.works = []
+      matchHTML = HTML.match(
+        /<h2 class="subtitle">最近参与<\/h2><ul class="browserList">(.+?)<\/ul><a href=/
+      )
+      if (matchHTML) {
+        const tree = HTMLToTree(matchHTML[1])
+        tree.children.forEach((item) => {
+          const { children } = item
+          node = findTreeNode(children, 'div > a|href&title')
+          const href = node ? node[0].attrs.href : ''
+          const name = node ? node[0].attrs.title : ''
+          node = findTreeNode(children, 'div > a > img')
+          const cover = node ? String(node[0].attrs.src).split('?')[0] : ''
+          node = findTreeNode(children, 'div > div > span')
+          const staff = node ? node[0].text[0] : ''
+          mono.works.push({
+            href,
+            name: HTMLDecode(name),
+            cover,
+            staff,
+          })
+        })
+      }
+
+      // 出演
+      mono.jobs = []
+      matchHTML = HTML.match(
+        /<h2 class="subtitle">出演<\/h2><ul class="browserList">(.+?)<\/ul><div class="section_line clear">/
+      )
+      if (matchHTML) {
+        const tree = HTMLToTree(matchHTML[1])
+        tree.children.forEach((item) => {
+          const { children } = item
+          node = findTreeNode(children, 'div > div > h3 > a')
+          const href = node ? node[0].attrs.href : ''
+          const name = node ? node[0].text[0] : ''
+          node = findTreeNode(children, 'div > div > small')
+          const nameCn = node ? node[0].text[0] : ''
+          node = findTreeNode(children, 'div > a > img')
+          const cover = node ? String(node[0].attrs.src).split('?')[0] : ''
+          node = findTreeNode(children, 'div > div > span')
+          const staff = node ? node[0].text[0] : ''
+          node = findTreeNode(children, 'ul > li > a')
+          const cast = node ? node[0].attrs.title : ''
+          const castHref = node ? node[0].attrs.href : ''
+          node = findTreeNode(children, 'ul > li > div > small')
+          const castTag = node ? node[0].text[0] : ''
+          node = findTreeNode(children, 'ul > li > a > img')
+          const castCover = node ? String(node[0].attrs.src).split('?')[0] : ''
+          mono.jobs.push({
+            href,
+            name: HTMLDecode(name),
+            nameCn,
+            cover,
+            staff,
+            cast,
+            castHref,
+            castTag,
+            castCover,
+          })
+        })
       }
     }
 
-    // 封面
-    // @issue
-    matchHTML =
-      HTML.match(/<img src="(.+?)" class="cover"\/>/) ||
-      HTML.match(/<img src="(.+?)" class="cover" \/>/)
-    if (matchHTML) {
-      mono.cover = String(matchHTML[1]).split('?')[0]
+    if (!mono.voices.length) {
+      delete mono.voices
+    }
+    if (!mono.works.length) {
+      delete mono.works
+    }
+    if (!mono.jobs.length) {
+      delete mono.jobs
     }
 
-    // 各种详细
-    matchHTML = HTML.match(/<ul id="infobox">(.+?)<\/ul>/)
-    if (matchHTML) {
-      mono.info = String(matchHTML[1])
-        .replace(/\n/g, '')
-        .replace(/ class="(.+?)"/g, '')
-        .replace(/ title="(.+?)"/g, '')
-        .replace(/>( +)</g, '><')
-        .trim()
-    }
-
-    // 详情
-    matchHTML = HTML.match(/<div class="detail">(.+?)<\/div>/)
-    if (matchHTML) {
-      mono.detail = matchHTML[1]
-    }
-
-    // 最近演出角色
-    mono.voices = []
-    matchHTML = HTML.match(
-      /<h2 class="subtitle">最近演出角色<\/h2><ul class="browserList">(.+?)<\/ul><a href=/
-    )
-    if (matchHTML) {
-      const tree = HTMLToTree(matchHTML[1])
-      tree.children.forEach(item => {
-        const { children } = item
-        node = findTreeNode(children, 'div > a|href&title')
-        const href = node ? node[0].attrs.href : ''
-        const name = node ? node[0].attrs.title : ''
-        node = findTreeNode(children, 'div > div > h3 > p')
-        const nameCn = node ? node[0].text[0] : ''
-        node = findTreeNode(children, 'div > a > img')
-        const cover = node ? String(node[0].attrs.src).split('?')[0] : ''
-        node = findTreeNode(children, 'ul > li > div > h3 > a|text&href')
-        const subjectHref = node ? node[0].attrs.href : ''
-        const subjectName = node ? node[0].text[0] : ''
-        node = findTreeNode(children, 'ul > li > div > small')
-        const subjectNameCn = node ? node[0].text[0] : ''
-        node = findTreeNode(children, 'ul > li > div > span')
-        const staff = node ? node[0].text[0] : ''
-        node = findTreeNode(children, 'ul > li > a > img')
-        const subjectCover = node ? String(node[0].attrs.src).split('?')[0] : ''
-        mono.voices.push({
-          href,
-          name: HTMLDecode(name),
-          nameCn: HTMLDecode(nameCn),
-          cover,
-          subjectHref,
-          subjectName: HTMLDecode(subjectName),
-          subjectNameCn: HTMLDecode(subjectNameCn),
-          staff,
-          subjectCover
-        })
-      })
-    }
-
-    // 最近参与
-    mono.works = []
-    matchHTML = HTML.match(
-      /<h2 class="subtitle">最近参与<\/h2><ul class="browserList">(.+?)<\/ul><a href=/
-    )
-    if (matchHTML) {
-      const tree = HTMLToTree(matchHTML[1])
-      tree.children.forEach(item => {
-        const { children } = item
-        node = findTreeNode(children, 'div > a|href&title')
-        const href = node ? node[0].attrs.href : ''
-        const name = node ? node[0].attrs.title : ''
-        node = findTreeNode(children, 'div > a > img')
-        const cover = node ? String(node[0].attrs.src).split('?')[0] : ''
-        node = findTreeNode(children, 'div > div > span')
-        const staff = node ? node[0].text[0] : ''
-        mono.works.push({
-          href,
-          name: HTMLDecode(name),
-          cover,
-          staff
-        })
-      })
-    }
-
-    // 出演
-    mono.jobs = []
-    matchHTML = HTML.match(
-      /<h2 class="subtitle">出演<\/h2><ul class="browserList">(.+?)<\/ul><div class="section_line clear">/
-    )
-    if (matchHTML) {
-      const tree = HTMLToTree(matchHTML[1])
-      tree.children.forEach(item => {
-        const { children } = item
-        node = findTreeNode(children, 'div > div > h3 > a')
-        const href = node ? node[0].attrs.href : ''
-        const name = node ? node[0].text[0] : ''
-        node = findTreeNode(children, 'div > div > small')
-        const nameCn = node ? node[0].text[0] : ''
-        node = findTreeNode(children, 'div > a > img')
-        const cover = node ? String(node[0].attrs.src).split('?')[0] : ''
-        node = findTreeNode(children, 'div > div > span')
-        const staff = node ? node[0].text[0] : ''
-        node = findTreeNode(children, 'ul > li > a')
-        const cast = node ? node[0].attrs.title : ''
-        const castHref = node ? node[0].attrs.href : ''
-        node = findTreeNode(children, 'ul > li > div > small')
-        const castTag = node ? node[0].text[0] : ''
-        node = findTreeNode(children, 'ul > li > a > img')
-        const castCover = node ? String(node[0].attrs.src).split('?')[0] : ''
-        mono.jobs.push({
-          href,
-          name: HTMLDecode(name),
-          nameCn,
-          cover,
-          staff,
-          cast,
-          castHref,
-          castTag,
-          castCover
-        })
-      })
-    }
+    return Promise.resolve(mono)
+  } catch (error) {
+    const msg = '\x1b[40m \x1b[31m[RETRY] ' + monoId + ' \x1b[0m'
+    console.log(msg)
+    return fetchMono(monoId, type, headers)
   }
-
-  if (!mono.voices.length) {
-    delete mono.voices
-  }
-  if (!mono.works.length) {
-    delete mono.works
-  }
-  if (!mono.jobs.length) {
-    delete mono.jobs
-  }
-
-  return Promise.resolve(mono)
 }
 
 function removeCF(HTML = '') {
@@ -218,7 +229,7 @@ function HTMLToTree(html, cmd = true) {
     tag: 'root',
     attrs: {},
     text: [],
-    children: []
+    children: [],
   }
   if (cmd) {
     tree.cmd = 'root'
@@ -236,7 +247,7 @@ function HTMLToTree(html, cmd = true) {
       })
       const item = {
         tag,
-        attrs: attrsMap
+        attrs: attrsMap,
       }
       if (cmd) {
         item.cmd = `${ref.cmd} > ${tag}`
@@ -252,14 +263,14 @@ function HTMLToTree(html, cmd = true) {
         ref = item
       }
     },
-    chars: text => {
+    chars: (text) => {
       ref.text.push(text)
     },
     end: () => {
       const _ref = ref.parent
       delete ref.parent
       ref = _ref
-    }
+    },
   })
 
   return tree
@@ -273,7 +284,7 @@ function findTreeNode(children, cmd = '', defaultValue) {
   const split = ' > '
   const tags = cmd.split(split)
   const tag = tags.shift()
-  const find = children.filter(item => {
+  const find = children.filter((item) => {
     let temp = tag.split('|')
     const _tag = temp[0]
     const attr = temp[1] || ''
@@ -281,7 +292,7 @@ function findTreeNode(children, cmd = '', defaultValue) {
     if (attr) {
       const attrs = attr.split('&')
       let match = true
-      attrs.forEach(attr => {
+      attrs.forEach((attr) => {
         if (attr.indexOf('~') !== -1) {
           // ~
           temp = attr.split('~')
@@ -326,7 +337,7 @@ function findTreeNode(children, cmd = '', defaultValue) {
   }
 
   const _find = []
-  find.forEach(item => {
+  find.forEach((item) => {
     _find.push(...(findTreeNode(item.children, tags.join(split)) || []))
   })
   if (!_find.length) {
@@ -352,5 +363,5 @@ function HTMLDecode(str = '') {
 }
 
 module.exports = {
-  fetchMono
+  fetchMono,
 }
