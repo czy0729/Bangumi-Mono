@@ -2,7 +2,7 @@
  * @Author: czy0729
  * @Date: 2020-03-12 11:44:26
  * @Last Modified by: czy0729
- * @Last Modified time: 2020-05-02 20:22:28
+ * @Last Modified time: 2020-10-11 18:29:52
  */
 const fs = require('fs')
 const path = require('path')
@@ -29,16 +29,18 @@ findJsonFile('./data')
 
 const ids = []
 filePaths.forEach((item) => {
-  const { jobs } = JSON.parse(fs.readFileSync(item))
-  if (!jobs) {
-    return
-  }
-
-  jobs.forEach((i) => {
-    if (i.castHref.includes('/person/')) {
-      ids.push(i.castHref.replace('/person/', ''))
+  if (item !== 'data/.DS_Store') {
+    const { jobs } = JSON.parse(fs.readFileSync(item))
+    if (!jobs) {
+      return
     }
-  })
+
+    jobs.forEach((i) => {
+      if (i.castHref.includes('/person/')) {
+        ids.push(i.castHref.replace('/person/', ''))
+      }
+    })
+  }
 })
 const uniqueIds = Array.from(new Set(ids))
 // const uniqueIds = [8138]
