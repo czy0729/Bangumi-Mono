@@ -2,7 +2,7 @@
  * @Author: czy0729
  * @Date: 2020-02-14 20:34:19
  * @Last Modified by: czy0729
- * @Last Modified time: 2020-08-09 18:38:27
+ * @Last Modified time: 2020-10-28 19:26:26
  */
 const axios = require('axios')
 const HTMLParser = require('./html-parser')
@@ -167,6 +167,15 @@ async function fetchMono(monoId = 21628, type = 'character', headers) {
           const castTag = node ? node[0].text[0] : ''
           node = findTreeNode(children, 'ul > li > a > img')
           const castCover = node ? String(node[0].attrs.src).split('?')[0] : ''
+          node = findTreeNode(children, 'div > div > h3 > span')
+          const type = node
+            ? parseInt(
+                node[0].attrs.class.replace(
+                  /ico_subject_type subject_type_| ll/g,
+                  ''
+                )
+              )
+            : ''
           mono.jobs.push({
             href,
             name: HTMLDecode(name),
@@ -177,6 +186,7 @@ async function fetchMono(monoId = 21628, type = 'character', headers) {
             castHref,
             castTag,
             castCover,
+            type,
           })
         })
       }
